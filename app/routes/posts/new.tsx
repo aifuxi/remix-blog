@@ -10,9 +10,28 @@ import mermaid from "@bytemd/plugin-mermaid";
 import gemoji from "@bytemd/plugin-gemoji";
 import zh from "bytemd/lib/locales/zh_Hans.json";
 import { useMemo, useState } from "react";
+import { Form, useActionData } from "@remix-run/react";
+import type { ActionFunction } from "@remix-run/node";
+import { json } from "@remix-run/node";
+import type { Post } from "~/models/post.server";
+import { createPost } from "~/models/post.server";
+
+export const action: ActionFunction = async ({ request }) => {
+  const formData = await request.formData();
+  // WARNING: 坑坑坑！！！！ 直接console.log formData输出的永远是一个空对象{}，想要获取值，要调get方法
+  console.log(formData); // 永远是一个空对象{}
+
+  const title = formData.get("title")?.toString() || "";
+  console.log("title", title);
+  const content = formData.get("content")?.toString() || "";
+  console.log("content", content);
+  const post = await createPost({ title, content });
+  return json({ post });
+};
 
 export default function NewPost() {
   const [content, setContent] = useState("");
+  const { post } = useActionData<{ post: Post }>() ?? {};
   const plugins = useMemo(
     () => [
       breaks(),
@@ -29,12 +48,14 @@ export default function NewPost() {
   );
 
   return (
-    <div>
+    <Form method="post">
+      {JSON.stringify(post)}
       <div className="flex w-full h-16 px-4">
         <div className="w-[960px] py-1">
           <input
             type="text"
             autoComplete="false"
+            name="title"
             placeholder="请输入标题......"
             className="block w-full h-full pl-4 text-3xl font-semibold focus:appearance-none focus:border-none focus:outline-none"
           />
@@ -55,7 +76,7 @@ export default function NewPost() {
               存为草稿
             </button>
             <button
-              type="button"
+              type="submit"
               className="
               inline-block rounded-lg bg-blue-600 px-6 
               py-2.5 text-base font-medium uppercase 
@@ -69,6 +90,7 @@ export default function NewPost() {
           </div>
         </div>
       </div>
+
       <Editor
         value={content}
         plugins={plugins}
@@ -77,6 +99,8 @@ export default function NewPost() {
           setContent(v);
         }}
       />
-    </div>
+
+      <input type={"hidden"} name="content" value={content}></input>
+    </Form>
   );
 }
